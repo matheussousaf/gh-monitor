@@ -1,0 +1,44 @@
+version: '3'
+
+services:
+  db:
+    image: "postgres:12"
+    env_file: .env
+    volumes:
+      - .db:/var/lib/postgresql/data
+    ports:
+      - '5433:5432'
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app/
+    env_file: .env
+    depends_on:
+      - db
+      - redis
+
+  worker:
+    image: github-monitor_api:latest
+    command: >
+      sh -c "celery worker --app=githubmonitor --loglevel=info -E -B"
+    volumes:
+      - .:/app/
+    env_file: .env
+    depends_on:
+      - db
+      - redis
+
+  webpack:
+    build:
+      context: .
+      dockerfile: Dockerfile-webpack
+    command: npm run dev
+    volumes:
+      - .:/app/
+      - /app/node_modules
+
+  redis:
+    image: "redis:5-buster"
